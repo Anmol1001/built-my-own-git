@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+# this is an executable python script
+
+import libwyag
+
+libwyag.main()
