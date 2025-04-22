@@ -164,7 +164,7 @@ def main(argv=sys.argv[1:]):
         
     
     def object_read(repo, sha):
-        path = repo_file(reo, "objects", sha[0:2], sha[2:])
+        path = repo_file(repo, "objects", sha[0:2], sha[2:])
         
         if not os.path.isfile(path):
             return None
@@ -216,9 +216,9 @@ def main(argv=sys.argv[1:]):
         def deserialize(self, data):
             self.blobdata = data
             
-    argsp1 = argsubparsers.add_parser("cat-file", help="Provide content of repository objects") 
+    argsp = argsubparsers.add_parser("cat-file", help="Provide content of repository objects") 
            
-    argsp1.add_argument("type", 
+    argsp.add_argument("type", 
                         metavar="type",
                         choices=["blob", "commit", "tag", "tree"],
                         help= "Specify the type")        
@@ -238,9 +238,37 @@ def main(argv=sys.argv[1:]):
         repo = repo_find()
         cat_file(repo, args.object, fmt=args.type.encode())
         
-  
+    argsp = argsubparsers.add_parser(
+                                    "hash-object",
+                                    help="Compute an object ID and optionally cretes a blob from a file"
+                                    )
+    
+    argsp.add_argument("-t",
+                   metavar="type",
+                   dest="type",
+                   choices=["blob", "commit", "tag", "tree"],
+                   default="blob",
+                   help="Specify the type")
+
+    argsp.add_argument("-w",
+                   dest="write",
+                   action="store_true",
+                   help="Actually write the object into the database")
+
+    argsp.add_argument("path",
+                   help="Read object from <file>")      
+    
+    def object_hash(fd, fmt, repo=None):
+        data = fd.read()
         
+        match fmt:
+            case b'commit' : obj = GitCommit(data)  
+            case b'tree' : obj = GitTree(data)  
+            case b'tag' : obj = GitTag(data)  
+            case b'blob' : obj = GitBlob(data)
+            case _: raise Exception(f"Unknown type {fmt}")  
         
+        return object_write(obj, repo)
 
     args = parser.parse_args(argv)
     match args.command: 
