@@ -270,6 +270,16 @@ def main(argv=sys.argv[1:]):
         
         return object_write(obj, repo)
 
+    def cmd_hash_object(args):
+        if args.write:
+            repo = repo_find()
+        else:
+            repo = None
+
+        with open(args.path, "rb") as fd:
+            sha = object_hash(fd, args.type.encode(), repo)
+            print(sha)
+        
     args = parser.parse_args(argv)
     match args.command: 
         case "add" : cmd_add(args)
