@@ -162,8 +162,85 @@ def main(argv=sys.argv[1:]):
             else:
                 self.init()        
         
+    
+    def object_read(repo, sha):
+        path = repo_file(reo, "objects", sha[0:2], sha[2:])
+        
+        if not os.path.isfile(path):
+            return None
+        
+        with open (path, "rb") as f:
+            raw = zlib.decompress(f.read())
+            
+            #Read Object Type
+            x = raw.find(b' ')
+            fmt = raw[0:x]
+            
+            #Read and validate object size
+            y = raw.find(b'\x00', x)
+            size = int(raw[x:y].decode("ascii"))
+            if size != len(raw) - y - 1:
+                raise Exception(f"Malformed object {sha}: bad length")
+            match fmt:
+                case b'commit' : c = GitCommit
+                case b'tree' : c = GitTree
+                case b'tag' : c = GitTag
+                case b'blob' : c = GitBlob
+                case _:
+                   raise Exception(f"Unknown type {fmt.decode("ascii")} for objec {sha}")
           
+    def object_write(obj, repo=None):
+        #Serialize the data
+        data = obj.serialize()
+        #Add header
+        result = obj.fmt + b' ' + str(len(data)).encode() + b'\x00' + data
+        #Compute hash
+        sha = hashlib.sha1(result).hexdigest()
+        
+        if repo:
+            # Compute Path
+            path=repo_file(repo, "objects", sha[0:2], sha[2:], mkdir=True)
+            
+            if not os.path.exists(path):
+                with open(path, 'wb') as f:
+                    f.write(zlib.compress(result))
+        return sha 
+    
+    #Git blob class to store and return their input unmodified
+    class GitBlob(GitObject):
+        fmt = b'blob'          
+        
+        def serialize(self):
+            return self.blobdata
+        
+        def deserialize(self, data):
+            self.blobdata = data
+            
+    argsp1 = argsubparsers.add_parser("cat-file", help="Provide content of repository objects") 
            
+    argsp1.add_argument("type", 
+                        metavar="type",
+                        choices=["blob", "commit", "tag", "tree"],
+                        help= "Specify the type")        
+    
+    argsp.add_argument("object",
+                   metavar="object",
+                   help="The object to display")
+    
+    
+    def object_find(repo, name, fmt=None, follow=True):
+        return name
+    
+    def cat_file(repo, obj, fmt=None):
+        obj = object_read(repo, object_find(repo, obj, fmt=fmt))
+        
+    def cmd_cat_file(args):
+        repo = repo_find()
+        cat_file(repo, args.object, fmt=args.type.encode())
+        
+  
+        
+        
 
     args = parser.parse_args(argv)
     match args.command: 
